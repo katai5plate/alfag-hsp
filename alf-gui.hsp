@@ -1,0 +1,348 @@
+#packopt runtime "myicon.hrt"
+#packopt name "alfag"
+#packopt orgpath 1
+#include "a2d.hsp"
+#include "user32.as"
+#include "dand2mod.hsp"
+
+screen 0,400,720
+title "ALFAG　BMP/PNG→透過PNG　一括変換"
+
+awakeCd = dirinfo(0)
+
+DandD_SetWindow 1
+DandD_SetSubLabel *ddStart
+DandD_GetList ddList
+
+gosub *load
+
+*gui
+clrobj
+pos 0,0
+color 212,208,200:boxf:color
+objsize
+
+objmode 2 : vtab=10
+pos 0,ginfo_cy+vtab
+
+font msgothic,16,1
+mes "■入力フォルダ"
+font msgothic,16,0
+input inFolder, -vtab+ginfo_sizex,,200
+pos 0,ginfo_cy+vtab
+
+font msgothic,16,1
+mes "■出力フォルダ"
+font msgothic,16,0
+objsize ginfo_sizex/2 : chkbox "入力フォルダと同じ", inEqOut
+input outFolder, -vtab+ginfo_sizex,,200
+pos 0,ginfo_cy+vtab
+
+font msgothic,16,1
+mes "■出力後、末尾につける文字列"
+font msgothic,16,0
+input lastWord, -vtab+ginfo_sizex
+SetWindowLong objinfo(stat, 2), -16, $50010080 | $1
+pos 0,ginfo_cy+vtab
+
+font msgothic,16,1
+mes "■変換モード"
+font msgothic,16,0
+objsize ginfo_sizex/3 : combox modeBox,,"透過情報\n色指定\n座標指定"
+pos 0,ginfo_cy+(vtab*2)
+
+font msgothic,16,1
+mes "▼オプション：透過情報"
+cy=ginfo_cy
+pos ginfo_sizex/2*0,cy : mes " 背景色"
+pos ginfo_sizex/2*1,cy : mes " 透過情報の位置"
+font msgothic,16,0
+cy=ginfo_cy
+pos ginfo_sizex/2*0,cy : objsize -vtab+ginfo_sizex/2 : combox bg_half,,"黒\n白"
+pos ginfo_sizex/2*1,cy : objsize -vtab+ginfo_sizex/2 : combox bg_half,,"右\n左\n上\n下" : objenable stat, 0
+pos 0,ginfo_cy+vtab
+
+font msgothic,16,1
+mes "▼オプション：色指定"
+cy=ginfo_cy
+pos ginfo_sizex/3*0,cy : color 127     : mes " R:"
+pos ginfo_sizex/3*1,cy : color 0,127   : mes " G:"
+pos ginfo_sizex/3*2,cy : color 0,0,127 : mes " B:"
+color:font msgothic,16,0
+cy=ginfo_cy
+pos ginfo_sizex/3*0,cy : input bg_colr_r , -vtab+ginfo_sizex/3
+SetWindowLong objinfo(stat, 2), -16, $50010080 | $1 | $2000
+pos ginfo_sizex/3*1,cy : input bg_colr_g , -vtab+ginfo_sizex/3
+SetWindowLong objinfo(stat, 2), -16, $50010080 | $1 | $2000
+pos ginfo_sizex/3*2,cy : input bg_colr_b , -vtab+ginfo_sizex/3
+SetWindowLong objinfo(stat, 2), -16, $50010080 | $1 | $2000
+pos 0,ginfo_cy+vtab
+
+font msgothic,16,1
+mes "▼オプション：座標指定"
+cy=ginfo_cy
+pos ginfo_sizex/2*0,cy : color 0,127,127 : mes " X:"
+pos ginfo_sizex/2*1,cy : color 127,0,127 : mes " Y:"
+color:font msgothic,16,0
+cy=ginfo_cy
+pos ginfo_sizex/2*0,cy : input bg_pixl_x , -vtab+ginfo_sizex/2
+SetWindowLong objinfo(stat, 2), -16, $50010080 | $1 | $2000
+pos ginfo_sizex/2*1,cy : input bg_pixl_y , -vtab+ginfo_sizex/2
+SetWindowLong objinfo(stat, 2), -16, $50010080 | $1 | $2000
+pos 0,ginfo_cy+vtab
+
+font msgothic,16,1
+mes "▼オプション：その他"
+font msgothic,16,0
+objsize ginfo_sizex/3*2 : chkbox "変換後、フォルダを開く", openFolder
+objsize ginfo_sizex/3*2 : chkbox "D&&Dした場合、元のフォルダに出力", ddOption
+cy=ginfo_cy
+pos ginfo_sizex/2*0,cy : objsize -vtab+ginfo_sizex/2 : button gosub "設定を保存する", *save
+pos ginfo_sizex/2*1,cy : objsize -vtab+ginfo_sizex/2 : button gosub "設定を再読み込み", *reload
+pos 0,ginfo_cy+(vtab/2)
+cy=ginfo_cy
+pos ginfo_sizex/2*0,cy : objsize -vtab+ginfo_sizex/2 : button goto "初期値に戻す", *reset
+pos ginfo_sizex/2*1,cy : objsize -vtab+ginfo_sizex/2 : button goto "終了する", *exit
+pos 0,ginfo_cy+(vtab*2)
+
+pos ginfo_sizex/4 : objsize ginfo_sizex/2,100 : button gosub "変換開始！",*start : obj_id_henkan=stat
+pos 0,ginfo_cy+(vtab*2)
+
+pos ginfo_sizex/8*5 : mes "(c) 2017 Had2Apps"
+stop
+
+*save
+	chdir awakeCd
+	iniText = ""
+	iniText += "in=" + inFolder + "\n"
+	iniText += "ieo=" + inEqOut + "\n"
+	iniText += "out=" + outFolder + "\n"
+	iniText += "last=" + lastWord + "\n"
+	iniText += "mode=" + modeBox + "\n"
+	iniText += "bgh=" + bg_half + "\n"
+	iniText += "bgr=" + bg_colr_r + "\n"
+	iniText += "bgg=" + bg_colr_g + "\n"
+	iniText += "bgb=" + bg_colr_b + "\n"
+	iniText += "bgx=" + bg_pixl_x + "\n"
+	iniText += "bgy=" + bg_pixl_y + "\n"
+	iniText += "opf=" + openFolder + "\n"
+	iniText += "ddo=" + ddOption + "\n"
+	notesel iniText
+	notesave "alfag.ini"
+	return
+
+*load
+	exist "alfag.ini"
+	if strsize!=-1{
+		iniText=""
+		notesel iniText
+		noteload "alfag.ini"
+		for i,0,notemax,1
+			noteget it,i
+			split it,"=",itA,itB
+			if itA="in"   : inFolder = itB
+			if itA="ieo"  : inEqOut = int(itB)
+			if itA="out"  : outFolder = itB
+			if itA="last" : lastWord = itB
+			if itA="mode" : modeBox = int(itB)
+			if itA="bgh"  : bg_half = int(itB)
+			if itA="bgr"  : bg_colr_r = int(itB)
+			if itA="bgg"  : bg_colr_g = int(itB)
+			if itA="bgb"  : bg_colr_b = int(itB)
+			if itA="bgx"  : bg_pixl_x = int(itB)
+			if itA="bgy"  : bg_pixl_y = int(itB)
+			if itA="opf"  : openFolder = int(itB)
+			if itA="ddo"  : ddOption = int(itB)
+			await
+		next
+	}else{
+		goto *reset
+	}
+	return
+	
+*reset
+	inFolder  = dirinfo(0)
+	inEqOut = 1
+	outFolder = ""
+	lastWord = "_a"
+	modeBox = 0
+	bg_half   = 0
+	bg_colr_r = 0
+	bg_colr_g = 0
+	bg_colr_b = 0
+	bg_pixl_x = 0
+	bg_pixl_y = 0
+	openFolder = 1
+	ddOption = 1
+	goto *gui
+
+*reload
+	gosub *load
+	goto *gui
+
+*ddStart
+	objenable obj_id_henkan, 0
+	failCount = 0
+	if inEqOut=1 : outFolder = inFolder
+	dirlist existFolder, outFolder, 5
+	if stat=0 {
+		dialog "出力フォルダが存在しません"
+		goto *returnGui
+	}
+	
+	j=0:for i,0,DandD_GetInfo(0),1
+		fa0 = DandD_GetPath(i)
+		split fa0,".",fa1,fa2
+		if fa2="bmp"{
+			fileArray(j)=fa0
+			j++
+		}
+		if fa2="png"{
+			fileArray(j)=fa0
+			j++
+		}
+	next
+	
+	if j=0 {
+		dialog "画像が見つかりません"
+		goto *returnGui
+	}
+	
+	ddmode = ddOption+1
+	
+	for i,0,length(fileArray),1
+		alfagRun modeBox, ddmode
+	next
+	
+	successCount = length(fileArray)-abs(failCount)
+	
+	if successCount>0{
+		dialog ""+successCount+" 個のファイルの変換に成功しました。"
+	}else{
+		dialog ""+abs(failCount)+" 個のファイルの変換に失敗しました。"
+	}
+	
+	if openFolder=1 && ddmode=1 : exec outFolder,16
+	
+	goto *returnGui
+
+*start
+	objenable obj_id_henkan, 0
+	failCount = 0
+	if inEqOut=1 : outFolder = inFolder
+	dirlist existFolder, outFolder, 5
+	if stat=0 {
+		dialog "出力フォルダが存在しません"
+		goto *returnGui
+	}
+	
+	chdir inFolder
+	
+	slStat=0
+	dirlist fileList_bmp,"*.bmp":slStat+=stat
+	dirlist fileList_png,"*.png":slStat+=stat
+	fileList = fileList_bmp+fileList_png
+	if slStat=0 {
+		dialog "画像が見つかりません"
+		goto *returnGui
+	}
+	
+	notesel fileList
+	for i,0,notemax,1
+		noteget fileArray(i),i
+	next
+	
+	for i,0,length(fileArray),1
+		alfagRun modeBox, 0
+	next
+	
+	successCount = length(fileArray)-abs(failCount)
+	
+	if successCount>0{
+		dialog ""+successCount+" 個のファイルの変換に成功しました。"
+	}else{
+		dialog ""+abs(failCount)+" 個のファイルの変換に失敗しました。"
+	}
+	
+	if openFolder=1 : exec outFolder,16
+	
+	goto *returnGui
+
+*returnGui
+	objenable obj_id_henkan, 1
+	stop
+
+*exit
+	end
+
+#deffunc alfagRun int mode, int dd
+	if dd = 0{
+		//通常
+		alCreateImageByFile 0, inFolder+"\\"+fileArray(i)
+	}else{
+		//D&D
+		alCreateImageByFile 0, fileArray(i)
+	}
+	w = alGetWidth() : 	h = alGetHeight()
+	if mode = 0 : halfMode bg_half
+	if mode = 1 : colrMode bg_colr_r, bg_colr_g, bg_colr_b
+	if mode = 2 : pixlMode bg_pixl_x, bg_pixl_y
+	if dd = 0{
+		//通常
+		split fileArray(i), ".", fn
+		output = ""+outFolder+"\\"+fn+""+lastWord+".png"
+	}
+	if dd = 1{
+		//D&Dで出力フォルダへ
+		output = ""+outFolder+"\\"+getpath(fileArray(i),1+8)+""+lastWord+".png"
+	}
+	if dd = 2{
+		//D&Dで元フォルダへ
+		output = ""+getpath(fileArray(i),1)+""+lastWord+".png"
+	}
+	imageOutput
+	failCount+=stat
+	return
+
+
+; 左にオリジナル画像、右に透過情報
+#deffunc halfMode int bg
+	w /= 2
+	for x,0,w,1
+		for y,0,h,1
+			if bg = 0 : alSetPixel x,y,(alGetPixel(x,y)&0xffffff)^(alGetPixel(x+w,y)&0xff)<<24
+			if bg = 1 : alSetPixel x,y,(alGetPixel(x,y)&0xffffff)|(alGetPixel(x+w,y)^0xff)<<24
+		next
+	next
+	return
+
+; 透明色指定した部分を完全透明化
+#deffunc colrMode int r, int g, int b
+	for x,0,w,1
+		for y,0,h,1
+			if alGetPixel(x,y) = ARGB(255,r,g,b) {
+				alSetPixel x, y, alGetPixel(x,y)^ARGB(255,0,0,0)
+			}else{
+				alSetPixel x, y, alGetPixel(x,y)
+			}
+		next
+	next
+	return
+
+; 指定座標の色を完全透明化
+#deffunc pixlMode int tx, int ty
+	then = alGetPixel(tx,ty)
+	for x,0,w,1
+		for y,0,h,1
+			if alGetPixel(x,y) = then {
+				alSetPixel x, y, alGetPixel(x,y)^ARGB(255,0,0,0)
+			}else{
+				alSetPixel x, y, alGetPixel(x,y)
+			}
+		next
+	next
+	return
+
+#deffunc imageOutput
+	alSaveFile output,"image/png",0,0,w,h
+	return stat
