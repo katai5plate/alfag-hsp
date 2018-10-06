@@ -1,4 +1,4 @@
-#packopt runtime "myicon.hrt"
+//ackopt runtime "myicon.hrt"
 #packopt name "alfag"
 #packopt orgpath 1
 #include "a2d.hsp"
